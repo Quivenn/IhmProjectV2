@@ -53,17 +53,28 @@ public class MenuManager : MonoBehaviour
         txtAliment.text = "Aliments : " + nbAli;
     }
 
-    // À brancher sur le bouton
+    public Transform joueur; // glisser la Main Camera dans l'Inspector
+    public float rayonSpawnMin = 2f;
+    public float rayonSpawnMax = 6f;
+
     public void GenererDechets()
     {
         GameObject[] prefabs = { prefabEmballage, prefabVerre, prefabAliment };
         for (int i = 0; i < 3; i++)
         {
             GameObject p = prefabs[Random.Range(0, prefabs.Length)];
-            Vector3 pos = new Vector3(
-                Random.Range(zoneSpawnX.x, zoneSpawnX.y),
-                0.5f,
-                Random.Range(zoneSpawnZ.x, zoneSpawnZ.y));
+
+            // Point aléatoire dans un anneau autour du joueur
+            Vector2 dir = Random.insideUnitCircle.normalized;
+            float dist = Random.Range(rayonSpawnMin, rayonSpawnMax);
+            Vector3 pos = joueur.position + new Vector3(dir.x * dist, 0f, dir.y * dist);
+
+            // Pose sur le sol réel
+            if (Physics.Raycast(pos + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 100f))
+                pos.y = hit.point.y + 0.5f;
+            else
+                pos.y = joueur.position.y; // secours : hauteur du joueur
+
             Instantiate(p, pos, Random.rotation);
         }
     }

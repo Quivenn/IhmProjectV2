@@ -20,7 +20,7 @@ public class FlecheGuidage : MonoBehaviour
 
         // La flèche se place devant le joueur et pointe vers la cible
         Vector3 posJoueur = joueur.position;
-        posJoueur.y = 0.05f;
+        posJoueur.y = 69.0f;
         Vector3 devant = joueur.forward;
         devant.y = 0;
         transform.position = posJoueur + devant.normalized * 1.5f;
