@@ -9,7 +9,7 @@ public class FlecheGuidage : MonoBehaviour
         Transform cible = TrouverDechetLePlusProche();
         if (cible == null)
         {
-            // Plus de déchets : on cache la flèche
+            // Plus de dÃ©chets : on cache la flÃ¨che
             foreach (Renderer r in GetComponentsInChildren<Renderer>())
                 r.enabled = false;
             return;
@@ -18,7 +18,7 @@ public class FlecheGuidage : MonoBehaviour
         foreach (Renderer r in GetComponentsInChildren<Renderer>())
             r.enabled = true;
 
-        // La flèche se place devant le joueur et pointe vers la cible
+        // La flÃ¨che se place devant le joueur et pointe vers la cible
         Vector3 posJoueur = joueur.position;
         posJoueur.y = 0.05f;
         transform.position = posJoueur + joueur.forward.normalized * 1.5f

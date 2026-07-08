@@ -10,18 +10,35 @@ public class MenuManager : MonoBehaviour
     public Vector2 zoneSpawnX = new Vector2(-4f, 4f);
     public Vector2 zoneSpawnZ = new Vector2(-4f, 1f);
 
-    void Start()
+    private void Start()
     {
-        panneauMenu.SetActive(false);
+        FermerMenu();
     }
 
-    void Update()
+    private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Tab))
-            panneauMenu.SetActive(!panneauMenu.activeSelf);
+        {
+            if (panneauMenu.activeSelf)
+                FermerMenu();
+            else
+                OuvrirMenu();
+        }
 
         if (panneauMenu.activeSelf)
             MettreAJourCompteurs();
+    }
+
+    private void OuvrirMenu()
+    {
+        panneauMenu.SetActive(true);
+        PlayerController.VerrouillerSouris(false);
+    }
+
+    private void FermerMenu()
+    {
+        panneauMenu.SetActive(false);
+        PlayerController.VerrouillerSouris(true);
     }
 
     void MettreAJourCompteurs()
@@ -30,13 +47,13 @@ public class MenuManager : MonoBehaviour
         int nbEmb = GameObject.FindGameObjectsWithTag("Emballage").Length;
         int nbAli = GameObject.FindGameObjectsWithTag("Aliment").Length;
 
-        txtTotal.text = "Total déchets : " + (nbVerre + nbEmb + nbAli);
+        txtTotal.text = "Total dÃ©chets : " + (nbVerre + nbEmb + nbAli);
         txtVerre.text = "Verre : " + nbVerre;
         txtEmballage.text = "Emballages : " + nbEmb;
         txtAliment.text = "Aliments : " + nbAli;
     }
 
-    // À brancher sur le bouton
+    // Ã€ brancher sur le bouton
     public void GenererDechets()
     {
         GameObject[] prefabs = { prefabEmballage, prefabVerre, prefabAliment };

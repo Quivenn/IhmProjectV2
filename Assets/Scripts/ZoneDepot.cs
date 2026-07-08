@@ -1,10 +1,13 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class ZoneDepot : MonoBehaviour
 {
-    [Tooltip("Tag du d�chet attendu : Emballage, Verre ou Aliment")]
+    [Tooltip("Tag du déchet attendu : Emballage, Verre ou Aliment")]
     public string tagAttendu;
 
+    [Header("Sons")]
     public AudioClip sonSucces;
     public AudioClip sonErreur;
 
@@ -12,40 +15,108 @@ public class ZoneDepot : MonoBehaviour
     private Color couleurOrigine;
     private AudioSource audioSource;
 
-    void Start()
+    // Évite qu'un même déchet soit compté plusieurs fois.
+    private readonly HashSet<int> dechetsTraites = new HashSet<int>();
+
+    private void Start()
     {
-        rendConteneur = transform.parent.GetComponent<Renderer>();
-        couleurOrigine = rendConteneur.material.color;
-        audioSource = transform.parent.GetComponent<AudioSource>();
+        rendConteneur = GetComponentInParent<Renderer>();
+        audioSource = GetComponentInParent<AudioSource>();
+
+        if (rendConteneur != null)
+            couleurOrigine = rendConteneur.material.color;
+        else
+            Debug.LogWarning("Renderer du conteneur introuvable.", gameObject);
     }
 
-    void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
-        bool estDechet = other.CompareTag("Emballage") ||
-                         other.CompareTag("Verre") ||
-                         other.CompareTag("Aliment");
-        if (!estDechet) return;
+        GameObject dechet = TrouverObjetDechet(other);
+        string tagDechet = TrouverTagDechet(other);
 
-        if (other.CompareTag(tagAttendu))
+        if (dechet == null || string.IsNullOrEmpty(tagDechet))
+            return;
+
+        int identifiant = dechet.GetInstanceID();
+
+        if (!dechetsTraites.Add(identifiant))
+            return;
+
+        // Informe GrabController avant de détruire l'objet.
+        if (GrabController.Instance != null)
+            GrabController.Instance.NotifierObjetDepose(dechet);
+
+        // Désactive les colliders immédiatement pour éviter un double dépôt.
+        foreach (Collider colliderDechet in dechet.GetComponentsInChildren<Collider>())
+            colliderDechet.enabled = false;
+
+        if (tagDechet == tagAttendu)
         {
-            ScoreManager.Instance.TriCorrect();
+            if (ScoreManager.Instance != null)
+                ScoreManager.Instance.TriCorrect();
+
             StartCoroutine(FlashCouleur(Color.green));
-            if (sonSucces != null) audioSource.PlayOneShot(sonSucces);
+
+            if (audioSource != null && sonSucces != null)
+                audioSource.PlayOneShot(sonSucces);
         }
         else
         {
-            ScoreManager.Instance.TriIncorrect();
+            if (ScoreManager.Instance != null)
+                ScoreManager.Instance.TriIncorrect();
+
             StartCoroutine(FlashCouleur(Color.red));
-            if (sonErreur != null) audioSource.PlayOneShot(sonErreur);
+
+            if (audioSource != null && sonErreur != null)
+                audioSource.PlayOneShot(sonErreur);
         }
 
-        Destroy(other.gameObject); // le d�chet dispara�t une fois d�pos�
+        Destroy(dechet);
     }
 
-    System.Collections.IEnumerator FlashCouleur(Color c)
+    private GameObject TrouverObjetDechet(Collider other)
     {
-        rendConteneur.material.color = c;
+        Rigidbody rigidbodyDechet = other.attachedRigidbody;
+
+        if (rigidbodyDechet != null)
+            return rigidbodyDechet.gameObject;
+
+        if (EstTagDechet(other.gameObject))
+            return other.gameObject;
+
+        return null;
+    }
+
+    private string TrouverTagDechet(Collider other)
+    {
+        if (EstTagDechet(other.gameObject))
+            return other.gameObject.tag;
+
+        if (other.attachedRigidbody != null &&
+            EstTagDechet(other.attachedRigidbody.gameObject))
+        {
+            return other.attachedRigidbody.gameObject.tag;
+        }
+
+        return "";
+    }
+
+    private bool EstTagDechet(GameObject objet)
+    {
+        return objet.CompareTag("Emballage") ||
+               objet.CompareTag("Verre") ||
+               objet.CompareTag("Aliment");
+    }
+
+    private IEnumerator FlashCouleur(Color nouvelleCouleur)
+    {
+        if (rendConteneur == null)
+            yield break;
+
+        rendConteneur.material.color = nouvelleCouleur;
+
         yield return new WaitForSeconds(0.6f);
+
         rendConteneur.material.color = couleurOrigine;
     }
 }

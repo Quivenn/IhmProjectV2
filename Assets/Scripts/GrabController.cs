@@ -2,59 +2,174 @@ using UnityEngine;
 
 public class GrabController : MonoBehaviour
 {
-    public float distancePrise = 5f;
-    public float distanceTenue = 2f;
+    public static GrabController Instance { get; private set; }
+
+    [Header("Préhension")]
+    [SerializeField] private float distancePrise = 5f;
+    [SerializeField] private float distanceTenue = 2f;
+    [SerializeField] private float vitesseSuivi = 15f;
 
     private Rigidbody objetTenu;
     private Camera cam;
 
-    void Start()
+    private void Awake()
     {
-        cam = Camera.main;
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Plusieurs GrabController sont présents.");
+            return;
+        }
+
+        Instance = this;
     }
 
-    void Update()
+    private void Start()
     {
-        if (Input.GetMouseButtonDown(0)) // clic gauche
+        cam = Camera.main;
+
+        if (cam == null)
+            Debug.LogError("Aucune caméra portant le tag MainCamera n'a été trouvée.");
+    }
+
+    private void Update()
+    {
+        if (cam == null)
+            return;
+
+        // Empêche les interactions pendant l'utilisation du menu.
+        if (Cursor.lockState != CursorLockMode.Locked)
+            return;
+
+        if (Input.GetMouseButtonDown(0))
         {
-            if (objetTenu == null) Ramasser();
-            else Lacher();
+            if (objetTenu == null)
+                Ramasser();
+            else
+                Lacher();
         }
 
         if (objetTenu != null)
-        {
-            // L'objet suit un point devant la cam�ra
-            Vector3 cible = cam.transform.position + cam.transform.forward * distanceTenue;
-            objetTenu.MovePosition(Vector3.Lerp(objetTenu.position, cible, 15f * Time.deltaTime));
-        }
+            SuivreCamera();
     }
 
-    void Ramasser()
+    private void Ramasser()
     {
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit, distancePrise))
+        Vector3 centreEcran = new Vector3(
+            Screen.width * 0.5f,
+            Screen.height * 0.5f,
+            0f
+        );
+
+        Ray rayon = cam.ScreenPointToRay(centreEcran);
+
+        if (!Physics.Raycast(rayon, out RaycastHit hit, distancePrise))
+            return;
+
+        if (!EstUnDechet(hit.collider.gameObject))
+            return;
+
+        Rigidbody rigidbodyTrouve =
+            hit.collider.GetComponentInParent<Rigidbody>();
+
+        if (rigidbodyTrouve == null)
         {
-            if (hit.collider.CompareTag("Emballage") ||
-                hit.collider.CompareTag("Verre") ||
-                hit.collider.CompareTag("Aliment"))
-            {
-                objetTenu = hit.collider.GetComponent<Rigidbody>();
-                objetTenu.useGravity = false;
-                objetTenu.linearDamping = 10f; // "drag" dans les versions < Unity 6
-                UIManager.Instance.AfficherNomDechet(hit.collider.tag);
-                Transform icone = objetTenu.transform.Find("Icone");
-                if (icone != null) icone.gameObject.SetActive(false);
-            }
+            Debug.LogWarning("Le déchet sélectionné ne possède pas de Rigidbody.");
+            return;
         }
+
+        objetTenu = rigidbodyTrouve;
+
+        objetTenu.useGravity = false;
+        objetTenu.linearVelocity = Vector3.zero;
+        objetTenu.angularVelocity = Vector3.zero;
+        objetTenu.linearDamping = 10f;
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.AfficherNomDechet(
+                ObtenirTagDechet(hit.collider.gameObject)
+            );
+
+        Transform icone = objetTenu.transform.Find("Icone");
+
+        if (icone != null)
+            icone.gameObject.SetActive(false);
     }
 
-    void Lacher()
+    private void SuivreCamera()
     {
+        Vector3 positionCible =
+            cam.transform.position +
+            cam.transform.forward * distanceTenue;
+
+        Vector3 nouvellePosition = Vector3.Lerp(
+            objetTenu.position,
+            positionCible,
+            vitesseSuivi * Time.deltaTime
+        );
+
+        objetTenu.MovePosition(nouvellePosition);
+    }
+
+    private void Lacher()
+    {
+        if (objetTenu == null)
+        {
+            NettoyerSaisie();
+            return;
+        }
+
         objetTenu.useGravity = true;
         objetTenu.linearDamping = 0f;
+
         Transform icone = objetTenu.transform.Find("Icone");
-        if (icone != null) icone.gameObject.SetActive(true);
+
+        if (icone != null)
+            icone.gameObject.SetActive(true);
+
+        NettoyerSaisie();
+    }
+
+    /*
+     * Appelée par ZoneDepot juste avant la destruction
+     * du déchet placé dans un conteneur.
+     */
+    public void NotifierObjetDepose(GameObject objetDepose)
+    {
+        if (objetTenu == null)
+            return;
+
+        if (objetTenu.gameObject != objetDepose)
+            return;
+
+        NettoyerSaisie();
+    }
+
+    private void NettoyerSaisie()
+    {
         objetTenu = null;
-        UIManager.Instance.CacherNomDechet();
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.CacherNomDechet();
+    }
+
+    private bool EstUnDechet(GameObject objet)
+    {
+        return objet.CompareTag("Emballage") ||
+               objet.CompareTag("Verre") ||
+               objet.CompareTag("Aliment");
+    }
+
+    private string ObtenirTagDechet(GameObject objet)
+    {
+        if (EstUnDechet(objet))
+            return objet.tag;
+
+        if (objet.transform.parent != null &&
+            EstUnDechet(objet.transform.parent.gameObject))
+        {
+            return objet.transform.parent.tag;
+        }
+
+        return "";
     }
 }

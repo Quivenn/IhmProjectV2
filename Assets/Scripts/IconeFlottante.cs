@@ -7,7 +7,7 @@ public class IconeFlottante : MonoBehaviour
 
     void Start()
     {
-        // Crée un texte 3D au dessus de l'objet
+        // CrÃ©e un texte 3D au dessus de l'objet
         GameObject go = new GameObject("Icone");
         go.transform.SetParent(transform);
         go.transform.localPosition = new Vector3(0, 2.5f, 0);
@@ -23,7 +23,7 @@ public class IconeFlottante : MonoBehaviour
 
     void LateUpdate()
     {
-        // Billboard : le texte fait toujours face à la caméra
+        // Billboard : le texte fait toujours face Ã  la camÃ©ra
         if (texte != null && Camera.main != null)
             texte.transform.rotation = Camera.main.transform.rotation;
     }

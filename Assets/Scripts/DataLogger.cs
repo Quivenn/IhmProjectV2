@@ -5,7 +5,7 @@ public class DataLogger : MonoBehaviour
 {
     public static DataLogger Instance;
 
-    [Tooltip("Configuration testée : AvecFleches ou SansFleches")]
+    [Tooltip("Configuration testÃ©e : AvecFleches ou SansFleches")]
     public string configuration = "AvecFleches";
 
     void Awake()
@@ -30,6 +30,6 @@ public class DataLogger : MonoBehaviour
             ScoreManager.Instance.score);
 
         File.AppendAllText(chemin, ligne);
-        Debug.Log("Données enregistrées : " + chemin);
+        Debug.Log("DonnÃ©es enregistrÃ©es : " + chemin);
     }
 }
